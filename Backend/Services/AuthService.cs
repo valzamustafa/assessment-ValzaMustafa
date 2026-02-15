@@ -1,107 +1,165 @@
+using System.Security.Cryptography;
+using System.Text;
 using Backend.Data;
-using Backend.DTOs.Auth;
+using Backend.DTOs;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using BCrypt.Net;
+using Microsoft.Extensions.Options;
 
 namespace Backend.Services
 {
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _context;
-        private readonly IConfiguration _config;
+        private readonly ITokenService _tokenService;
+        private readonly IConfiguration _configuration;
 
-        public AuthService(AppDbContext context, IConfiguration config)
+        public AuthService(
+            AppDbContext context, 
+            ITokenService tokenService,
+            IConfiguration configuration)
         {
             _context = context;
-            _config = config;
+            _tokenService = tokenService;
+            _configuration = configuration;
         }
 
-        public async Task<LoginResponseDto> Register(RegisterDto request)
+        public async Task<AuthResponseDto?> Register(RegisterDto registerDto)
         {
-            var userExists = await _context.Users.AnyAsync(u => u.Email == request.Email);
-            if (userExists)
-            {
-                throw new Exception("User with this email already exists");
-            }
+          
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == registerDto.Email);
 
+            if (existingUser != null)
+                return null;
             var user = new User
             {
-                FullName = request.FullName,
-                Email = request.Email,
-               PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = "User",
+                FullName  = registerDto.Name,
+                Email = registerDto.Email,
+                PasswordHash = HashPassword(registerDto.Password),
+                Role = "user",
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            var token = GenerateToken(user);
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
 
-            return new LoginResponseDto
+            return new AuthResponseDto
             {
                 Id = user.Id,
-                FullName = user.FullName,
+                Name = user.FullName ,
                 Email = user.Email,
                 Role = user.Role,
-                Token = token
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
             };
         }
 
-        public async Task<LoginResponseDto> Login(LoginDto request)
+        public async Task<AuthResponseDto?> Login(LoginDto loginDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-            if (user == null)
-            {
-                throw new Exception("Invalid email or password");
-            }
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
-            var isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-            if (!isValid)
-            {
-                throw new Exception("Invalid email or password");
-            }
+            if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+                return null;
 
-            var token = GenerateToken(user);
+            await _tokenService.RevokeAllUserTokens(user.Id);
 
-            return new LoginResponseDto
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
+
+            return new AuthResponseDto
             {
                 Id = user.Id,
-                FullName = user.FullName,
+                Name = user.FullName ,
                 Email = user.Email,
                 Role = user.Role,
-                Token = token
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token,
+                ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
             };
         }
 
-        private string GenerateToken(User user)
-{
-    var claims = new[]
-    {
-        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-        new Claim(ClaimTypes.Email, user.Email),
-        new Claim(ClaimTypes.Name, user.FullName),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
+        public async Task<AuthResponseDto?> RefreshToken(string refreshToken)
+        {
+            var storedToken = await _tokenService.ValidateRefreshToken(refreshToken);
+            
+            if (storedToken == null)
+                return null;
 
-    var jwtKey = _config["Jwt:Key"] ?? "your-super-secret-key-with-at-least-32-characters-here";
-    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-    var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var user = storedToken.User;
 
-    var token = new JwtSecurityToken(
-        issuer: _config["Jwt:Issuer"] ?? "http://localhost:5000",
-        audience: _config["Jwt:Audience"] ?? "http://localhost:5000",
-        claims: claims,
-        expires: DateTime.Now.AddDays(7),
-        signingCredentials: creds
-    );
+            await _tokenService.RevokeRefreshToken(refreshToken);
 
-    return new JwtSecurityTokenHandler().WriteToken(token);
-}
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var newRefreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
+
+            return new AuthResponseDto
+            {
+                Id = user.Id,
+                Name = user.FullName ,
+                Email = user.Email,
+                Role = user.Role,
+                AccessToken = accessToken,
+                RefreshToken = newRefreshToken.Token,
+                ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
+            };
+        }
+
+        public async Task<bool> Logout(string refreshToken)
+        {
+            await _tokenService.RevokeRefreshToken(refreshToken);
+            return true;
+        }
+
+        public async Task<UserDto?> GetCurrentUser(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            
+            if (user == null)
+                return null;
+
+            return new UserDto
+            {
+                Id = user.Id,
+                Name = user.FullName ,
+                Email = user.Email,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
+        }
+
+        public async Task<bool> ChangePassword(int userId, string oldPassword, string newPassword)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            
+            if (user == null || !VerifyPassword(oldPassword, user.PasswordHash))
+                return false;
+
+            user.PasswordHash = HashPassword(newPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            
+            await _tokenService.RevokeAllUserTokens(userId);
+            
+            await _context.SaveChangesAsync();
+            
+            return true;
+        }
+
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(hashedBytes);
+        }
+
+        private bool VerifyPassword(string password, string hash)
+        {
+            return HashPassword(password) == hash;
+        }
     }
 }

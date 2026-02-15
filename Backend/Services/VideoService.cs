@@ -32,9 +32,9 @@ namespace Backend.Services
                 throw new Exception("Invalid file type. Only MP4, WebM and MOV are allowed.");
             }
 
-            if (request.VideoFile.Length > 100 * 1024 * 1024)
+            if (request.VideoFile.Length > 2L * 1024 * 1024 * 1024)
             {
-                throw new Exception("File too large. Maximum size is 100MB.");
+                throw new Exception("File too large. Maximum size is 2GB.");
             }
 
             var uploadsFolder = Path.Combine(_env.ContentRootPath, "Uploads", "Videos");
