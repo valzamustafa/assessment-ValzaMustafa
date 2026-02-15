@@ -1,14 +1,17 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/layout/Navbar';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import UploadPage from './pages/UploadPage';
+import VideoPage from './pages/VideoPage';
+import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
-import { AuthProvider } from './contexts/AuthProvider'; 
+import { AuthProvider } from './contexts/AuthProvider';
 import './styles/animations.css';
 
 function App() {
@@ -20,71 +23,13 @@ function App() {
           <main className="container mx-auto px-4 py-8">
             <AnimatePresence mode="wait">
               <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    <motion.div
-                      key="home"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <HomePage />
-                    </motion.div>
-                  } 
-                />
-                
-                <Route 
-                  path="/login" 
-                  element={
-                    <motion.div
-                      key="login"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <LoginPage />
-                    </motion.div>
-                  } 
-                />
-                
-                <Route 
-                  path="/register" 
-                  element={
-                    <motion.div
-                      key="register"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <RegisterPage />
-                    </motion.div>
-                  } 
-                />
-                
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    <ProtectedRoute>
-                      <motion.div
-                        key="dashboard"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <DashboardPage />
-                      </motion.div>
-                    </ProtectedRoute>
-                  } 
-                />
-                
-              
-                
-         
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                <Route path="/upload" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
+                <Route path="/video/:id" element={<ProtectedRoute><VideoPage /></ProtectedRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
               </Routes>
             </AnimatePresence>
           </main>

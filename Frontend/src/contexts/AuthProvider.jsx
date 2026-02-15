@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
       try {
         if (authService.isAuthenticated()) {
           const userData = authService.getUser();
+          console.log('AuthProvider - loaded user:', userData);
           setUser(userData);
         }
       } catch (error) {
@@ -25,12 +26,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     const data = await authService.login(credentials);
-    setUser({
+    console.log('AuthProvider - login data:', data);
+    
+    const userData = {
       id: data.id,
       name: data.name,
       email: data.email,
-      role: data.role
-    });
+      role: data.role 
+    };
+    
+    console.log('AuthProvider - setting user:', userData);
+    setUser(userData);
     return data;
   };
 
@@ -62,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshToken,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin'
+    isAdmin: user?.role === 'Admin' 
   };
 
   return (

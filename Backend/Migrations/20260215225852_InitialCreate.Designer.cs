@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260215001519_RefreshToken")]
-    partial class RefreshToken
+    [Migration("20260215225852_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -158,6 +158,17 @@ namespace Backend.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 2, 15, 22, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "admin@gmail.com",
+                            FullName = "Admin User",
+                            PasswordHash = "JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=",
+                            Role = "Admin"
+                        });
                 });
 
             modelBuilder.Entity("Backend.Models.Video", b =>
@@ -168,19 +179,28 @@ namespace Backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int>("Duration")
                         .HasColumnType("int");
 
-                    b.Property<string>("FilePath")
+                    b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ThumbnailPath")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
@@ -188,14 +208,17 @@ namespace Backend.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UserId1")
-                        .HasColumnType("int");
+                    b.Property<string>("VideoPath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("VideoUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.ToTable("Videos");
                 });
@@ -209,7 +232,7 @@ namespace Backend.Migrations
                         .IsRequired();
 
                     b.HasOne("Backend.Models.Video", "Video")
-                        .WithMany()
+                        .WithMany("Annotations")
                         .HasForeignKey("VideoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -228,7 +251,7 @@ namespace Backend.Migrations
                         .IsRequired();
 
                     b.HasOne("Backend.Models.Video", "Video")
-                        .WithMany()
+                        .WithMany("Bookmarks")
                         .HasForeignKey("VideoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -252,14 +275,10 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Models.Video", b =>
                 {
                     b.HasOne("Backend.Models.User", "User")
-                        .WithMany()
+                        .WithMany("Videos")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Backend.Models.User", null)
-                        .WithMany("Videos")
-                        .HasForeignKey("UserId1");
 
                     b.Navigation("User");
                 });
@@ -269,6 +288,13 @@ namespace Backend.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("Videos");
+                });
+
+            modelBuilder.Entity("Backend.Models.Video", b =>
+                {
+                    b.Navigation("Annotations");
+
+                    b.Navigation("Bookmarks");
                 });
 #pragma warning restore 612, 618
         }

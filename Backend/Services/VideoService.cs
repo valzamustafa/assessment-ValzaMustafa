@@ -8,54 +8,46 @@ namespace Backend.Services
     public class VideoService : IVideoService
     {
         private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _env;
-        private readonly IHttpContextAccessor _httpAccessor;
+        private readonly IWebHostEnvironment _environment;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public VideoService(AppDbContext context, IWebHostEnvironment env, IHttpContextAccessor httpAccessor)
+        public VideoService(
+            AppDbContext context, 
+            IWebHostEnvironment environment,
+            IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
-            _env = env;
-            _httpAccessor = httpAccessor;
+            _environment = environment;
+            _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<VideoResponseDto> UploadVideo(int userId, CreateVideoDto request)
-        {
-            if (request.VideoFile == null || request.VideoFile.Length == 0)
-            {
-                throw new Exception("No file uploaded");
-            }
-
-            var allowedExtensions = new[] { ".mp4", ".webm", ".mov" };
-            var extension = Path.GetExtension(request.VideoFile.FileName).ToLower();
-            if (!allowedExtensions.Contains(extension))
-            {
-                throw new Exception("Invalid file type. Only MP4, WebM and MOV are allowed.");
-            }
-
-            if (request.VideoFile.Length > 2L * 1024 * 1024 * 1024)
-            {
-                throw new Exception("File too large. Maximum size is 2GB.");
-            }
-
-            var uploadsFolder = Path.Combine(_env.ContentRootPath, "Uploads", "Videos");
+       public async Task<VideoResponseDto> UploadVideo(int userId, CreateVideoDto createVideoDto)
+{
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", "Videos");
             if (!Directory.Exists(uploadsFolder))
-            {
                 Directory.CreateDirectory(uploadsFolder);
-            }
 
-            var fileName = $"{Guid.NewGuid()}{extension}";
-            var filePath = Path.Combine(uploadsFolder, fileName);
+            var uniqueFileName = $"{Guid.NewGuid()}_{createVideoDto.VideoFile.FileName}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await request.VideoFile.CopyToAsync(stream);
+                await createVideoDto.VideoFile.CopyToAsync(stream);
             }
+
+            var httpRequest = _httpContextAccessor.HttpContext.Request;
+            var baseUrl = $"{httpRequest.Scheme}://{httpRequest.Host}";
+            var videoUrl = $"{baseUrl}/Uploads/Videos/{uniqueFileName}";
 
             var video = new Video
             {
-                Title = request.Title,
-                FilePath = $"/Uploads/Videos/{fileName}",
-                Duration = 0,
+                Title = createVideoDto.Title,
+                Description = createVideoDto.Description,
+                VideoPath = filePath,
+                VideoUrl = videoUrl,
+                FileName = uniqueFileName,
+                FileSize = createVideoDto.VideoFile.Length,
+                ContentType = createVideoDto.VideoFile.ContentType,
                 UserId = userId,
                 UploadedAt = DateTime.UtcNow
             };
@@ -63,119 +55,78 @@ namespace Backend.Services
             _context.Videos.Add(video);
             await _context.SaveChangesAsync();
 
-            var user = await _context.Users.FindAsync(userId);
-            var baseUrl = _httpAccessor.HttpContext != null 
-            ? $"{_httpAccessor.HttpContext.Request.Scheme}://{_httpAccessor.HttpContext.Request.Host}" 
-            : "";
-
-            return new VideoResponseDto
-            {
-                Id = video.Id,
-                Title = video.Title,
-                VideoUrl = baseUrl + video.FilePath,
-                Duration = video.Duration,
-                UploadedBy = user?.FullName ?? "Unknown",
-                UploadedAt = video.UploadedAt
-            };
+            return MapToDto(video);
         }
 
-        public async Task<List<VideoResponseDto>> GetAllVideos()
+        public async Task<IEnumerable<VideoResponseDto>> GetAllVideos()
         {
             var videos = await _context.Videos
                 .Include(v => v.User)
                 .OrderByDescending(v => v.UploadedAt)
                 .ToListAsync();
 
-            var baseUrl = _httpAccessor.HttpContext != null 
-            ? $"{_httpAccessor.HttpContext.Request.Scheme}://{_httpAccessor.HttpContext.Request.Host}" 
-            : "";
-
-
-            return videos.Select(v => new VideoResponseDto
-            {
-                Id = v.Id,
-                Title = v.Title,
-                VideoUrl = baseUrl + v.FilePath,
-                Duration = v.Duration,
-                UploadedBy = v.User?.FullName ?? "Unknown",
-                UploadedAt = v.UploadedAt
-            }).ToList();
+            return videos.Select(MapToDto);
         }
 
-        public async Task<List<VideoResponseDto>> GetUserVideos(int userId)
+        public async Task<IEnumerable<VideoResponseDto>> GetUserVideos(int userId)
         {
             var videos = await _context.Videos
-                .Include(v => v.User)
                 .Where(v => v.UserId == userId)
+                .Include(v => v.User)
                 .OrderByDescending(v => v.UploadedAt)
                 .ToListAsync();
 
-            var baseUrl = _httpAccessor.HttpContext != null 
-            ? $"{_httpAccessor.HttpContext.Request.Scheme}://{_httpAccessor.HttpContext.Request.Host}" 
-            : "";
-
-
-            return videos.Select(v => new VideoResponseDto
-            {
-                Id = v.Id,
-                Title = v.Title,
-                VideoUrl = baseUrl + v.FilePath,
-                Duration = v.Duration,
-                UploadedBy = v.User?.FullName ?? "Unknown",
-                UploadedAt = v.UploadedAt
-            }).ToList();
+            return videos.Select(MapToDto);
         }
 
-        public async Task<VideoResponseDto> GetVideoById(int id)
+        public async Task<VideoResponseDto?> GetVideoById(int id)
         {
             var video = await _context.Videos
                 .Include(v => v.User)
+                .Include(v => v.Annotations)
+                .Include(v => v.Bookmarks)
                 .FirstOrDefaultAsync(v => v.Id == id);
 
             if (video == null)
-            {
-                throw new Exception("Video not found");
-            }
+                return null;
 
-            var baseUrl = _httpAccessor.HttpContext != null 
-            ? $"{_httpAccessor.HttpContext.Request.Scheme}://{_httpAccessor.HttpContext.Request.Host}" 
-            : "";
-
-
-            return new VideoResponseDto
-            {
-                Id = video.Id,
-                Title = video.Title,
-                VideoUrl = baseUrl + video.FilePath,
-                Duration = video.Duration,
-                UploadedBy = video.User?.FullName ?? "Unknown",
-                UploadedAt = video.UploadedAt
-            };
+            return MapToDto(video);
         }
 
         public async Task<bool> DeleteVideo(int id, int userId, bool isAdmin)
         {
             var video = await _context.Videos.FindAsync(id);
             if (video == null)
-            {
-                throw new Exception("Video not found");
-            }
+                return false;
+            if (video.UserId != userId && !isAdmin)
+                throw new UnauthorizedAccessException("You don't have permission to delete this video");
 
-            if (!isAdmin && video.UserId != userId)
+            if (File.Exists(video.VideoPath))
             {
-                throw new Exception("You don't have permission to delete this video");
-            }
-
-            var filePath = Path.Combine(_env.ContentRootPath, video.FilePath.TrimStart('/'));
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
+                File.Delete(video.VideoPath);
             }
 
             _context.Videos.Remove(video);
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        private VideoResponseDto MapToDto(Video video)
+        {
+            return new VideoResponseDto
+            {
+                Id = video.Id,
+                Title = video.Title,
+                Description = video.Description,
+                VideoUrl = video.VideoUrl,
+                Duration = video.Duration,
+                UserId = video.UserId,
+                UserName = video.User?.FullName ?? "Unknown", 
+                UploadedAt = video.UploadedAt,
+                AnnotationCount = video.Annotations?.Count ?? 0,
+                BookmarkCount = video.Bookmarks?.Count ?? 0
+            };
         }
     }
 }

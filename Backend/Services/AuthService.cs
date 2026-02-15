@@ -26,62 +26,114 @@ namespace Backend.Services
 
         public async Task<AuthResponseDto?> Register(RegisterDto registerDto)
         {
-          
-            var existingUser = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == registerDto.Email);
-
-            if (existingUser != null)
-                return null;
-            var user = new User
+            try
             {
-                FullName  = registerDto.Name,
-                Email = registerDto.Email,
-                PasswordHash = HashPassword(registerDto.Password),
-                Role = "user",
-                CreatedAt = DateTime.UtcNow
-            };
+                Console.WriteLine($"=== REGISTER ATTEMPT ===");
+                Console.WriteLine($"Email: {registerDto.Email}");
+                Console.WriteLine($"Name: {registerDto.Name}");
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                var existingUser = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == registerDto.Email);
 
-            var accessToken = _tokenService.GenerateAccessToken(user);
-            var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
+                if (existingUser != null)
+                {
+                    Console.WriteLine($"User already exists: {registerDto.Email}");
+                    return null;
+                }
 
-            return new AuthResponseDto
+                var user = new User
+                {
+                    FullName = registerDto.Name,
+                    Email = registerDto.Email,
+                    PasswordHash = HashPassword(registerDto.Password),
+                    Role = "user",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                Console.WriteLine($"Creating user: {user.Email}");
+
+                _context.Users.Add(user);
+                
+                var saveResult = await _context.SaveChangesAsync();
+                Console.WriteLine($"SaveChanges result: {saveResult} users saved");
+
+                if (saveResult == 0)
+                {
+                    Console.WriteLine("ERROR: No changes saved to database!");
+                    return null;
+                }
+
+                Console.WriteLine($"User saved with ID: {user.Id}");
+
+                var accessToken = _tokenService.GenerateAccessToken(user);
+                var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
+
+                return new AuthResponseDto
+                {
+                    Id = user.Id,
+                    Name = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role,
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken.Token,
+                    ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
+                };
+            }
+            catch (Exception ex)
             {
-                Id = user.Id,
-                Name = user.FullName ,
-                Email = user.Email,
-                Role = user.Role,
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token,
-                ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
-            };
+                Console.WriteLine($"ERROR in Register: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         public async Task<AuthResponseDto?> Login(LoginDto loginDto)
         {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
-
-            if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
-                return null;
-
-            await _tokenService.RevokeAllUserTokens(user.Id);
-
-            var accessToken = _tokenService.GenerateAccessToken(user);
-            var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
-
-            return new AuthResponseDto
+            try
             {
-                Id = user.Id,
-                Name = user.FullName ,
-                Email = user.Email,
-                Role = user.Role,
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token,
-                ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
-            };
+                Console.WriteLine($"=== LOGIN ATTEMPT ===");
+                Console.WriteLine($"Email: {loginDto.Email}");
+
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
+
+                if (user == null)
+                {
+                    Console.WriteLine($"User not found: {loginDto.Email}");
+                    return null;
+                }
+
+                Console.WriteLine($"User found: ID={user.Id}, Role={user.Role}");
+
+                if (!VerifyPassword(loginDto.Password, user.PasswordHash))
+                {
+                    Console.WriteLine("Invalid password");
+                    return null;
+                }
+
+                Console.WriteLine("Password verified");
+
+                await _tokenService.RevokeAllUserTokens(user.Id);
+
+                var accessToken = _tokenService.GenerateAccessToken(user);
+                var refreshToken = await _tokenService.GenerateAndStoreRefreshToken(user.Id);
+
+                return new AuthResponseDto
+                {
+                    Id = user.Id,
+                    Name = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role,
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken.Token,
+                    ExpiresIn = Convert.ToInt32(_configuration["Jwt:AccessTokenExpiryMinutes"]) * 60
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR in Login: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<AuthResponseDto?> RefreshToken(string refreshToken)
@@ -101,7 +153,7 @@ namespace Backend.Services
             return new AuthResponseDto
             {
                 Id = user.Id,
-                Name = user.FullName ,
+                Name = user.FullName,
                 Email = user.Email,
                 Role = user.Role,
                 AccessToken = accessToken,
@@ -126,7 +178,7 @@ namespace Backend.Services
             return new UserDto
             {
                 Id = user.Id,
-                Name = user.FullName ,
+                Name = user.FullName,
                 Email = user.Email,
                 Role = user.Role,
                 CreatedAt = user.CreatedAt

@@ -1,13 +1,19 @@
-import { forwardRef } from 'react';
+import { useState } from 'react';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-const Input = forwardRef(({ 
-  label, 
-  error, 
-  icon: Icon,
+const Input = ({
+  label,
   type = 'text',
+  value,
+  onChange,
+  icon: Icon,
+  error,
   className = '',
-  ...props 
-}, ref) => {
+  ...props
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const inputType = type === 'password' && showPassword ? 'text' : type;
+
   return (
     <div className="w-full">
       {label && (
@@ -17,30 +23,38 @@ const Input = forwardRef(({
       )}
       <div className="relative">
         {Icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icon className="h-5 w-5 text-gray-400" />
-          </div>
+          <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
         )}
         <input
-          ref={ref}
-          type={type}
+          type={inputType}
+          value={value}
+          onChange={onChange}
           className={`
-            block w-full rounded-lg border-gray-300 shadow-sm
-            focus:ring-primary-500 focus:border-primary-500
-            ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-2
-            ${error ? 'border-red-300 text-red-900 placeholder-red-300' : ''}
+            w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500
+            ${Icon ? 'pl-10' : ''}
+            ${type === 'password' ? 'pr-10' : ''}
+            ${error ? 'border-red-500' : 'border-gray-300'}
             ${className}
           `}
           {...props}
         />
+        {type === 'password' && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+          >
+            {showPassword ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-400" />
+            )}
+          </button>
+        )}
       </div>
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
-});
-
-Input.displayName = 'Input';
+};
 
 export default Input;

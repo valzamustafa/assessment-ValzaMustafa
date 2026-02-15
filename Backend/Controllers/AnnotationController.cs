@@ -6,7 +6,7 @@ using System.Security.Claims;
 
 namespace Backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/videos/{videoId}/annotations")]
     [ApiController]
     [Authorize]
     public class AnnotationController : ControllerBase
@@ -24,24 +24,18 @@ namespace Backend.Controllers
             return claim != null ? int.Parse(claim.Value) : 0;
         }
 
-        private string GetUserName()
-        {
-            return User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
-        }
-
         private bool IsAdmin()
         {
             return User.IsInRole("Admin");
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAnnotation([FromBody] CreateAnnotationDto request)
+        public async Task<IActionResult> CreateAnnotation(int videoId, [FromBody] CreateAnnotationDto request)
         {
             try
             {
                 var userId = GetUserId();
-                var userName = GetUserName();
-                var result = await _annotationService.CreateAnnotation(userId, userName, request);
+                var result = await _annotationService.CreateAnnotation(videoId, userId, request);
                 return Ok(new { success = true, message = "Annotation created successfully", data = result });
             }
             catch (Exception ex)
@@ -50,7 +44,7 @@ namespace Backend.Controllers
             }
         }
 
-        [HttpGet("video/{videoId}")]
+        [HttpGet]
         public async Task<IActionResult> GetVideoAnnotations(int videoId)
         {
             try
@@ -80,7 +74,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAnnotation(int id)
+        public async Task<IActionResult> DeleteAnnotation(int videoId, int id)
         {
             try
             {

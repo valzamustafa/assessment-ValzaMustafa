@@ -6,7 +6,7 @@ using System.Security.Claims;
 
 namespace Backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/videos/{videoId}/bookmarks")]
     [ApiController]
     [Authorize]
     public class BookmarkController : ControllerBase
@@ -24,33 +24,48 @@ namespace Backend.Controllers
             return claim != null ? int.Parse(claim.Value) : 0;
         }
 
-        private string GetUserName()
-        {
-            return User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
-        }
-
         private bool IsAdmin()
         {
             return User.IsInRole("Admin");
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateBookmark([FromBody] CreateBookmarkDto request)
+       [HttpPost]
+    public async Task<IActionResult> CreateBookmark(int videoId, [FromBody] CreateBookmarkDto request)
+    {
+    try
+    {
+        Console.WriteLine("=== CREATE BOOKMARK REQUEST ===");
+        Console.WriteLine($"URL videoId: {videoId}");
+        Console.WriteLine($"Request.VideoId: {request.VideoId}");
+        Console.WriteLine($"Request.Timestamp: {request.Timestamp}");
+        Console.WriteLine($"Request.Title: {request.Title}");
+        
+        if (request.Timestamp < 0)
         {
-            try
-            {
-                var userId = GetUserId();
-                var userName = GetUserName();
-                var result = await _bookmarkService.CreateBookmark(userId, userName, request);
-                return Ok(new { success = true, message = "Bookmark created successfully", data = result });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
+            return BadRequest(new { success = false, message = "Timestamp cannot be negative" });
+        }
+        
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new { success = false, message = "Title is required" });
+        }
+        
+        if (request.VideoId != videoId)
+        {
+            return BadRequest(new { success = false, message = "Video ID mismatch" });
         }
 
-        [HttpGet("video/{videoId}")]
+        var userId = GetUserId();
+        var result = await _bookmarkService.CreateBookmark(videoId, userId, request);
+        return Ok(new { success = true, message = "Bookmark created successfully", data = result });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+        return BadRequest(new { success = false, message = ex.Message });
+    }
+}
+        [HttpGet]
         public async Task<IActionResult> GetVideoBookmarks(int videoId)
         {
             try
@@ -80,7 +95,7 @@ namespace Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteBookmark(int id)
+        public async Task<IActionResult> DeleteBookmark(int videoId, int id)
         {
             try
             {

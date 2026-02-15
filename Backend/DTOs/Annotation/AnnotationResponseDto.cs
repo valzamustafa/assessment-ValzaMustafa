@@ -1,3 +1,5 @@
+using System;
+
 namespace Backend.DTOs.Annotation
 {
     public class AnnotationResponseDto

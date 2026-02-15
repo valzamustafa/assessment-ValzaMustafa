@@ -14,42 +14,49 @@ namespace Backend.Services
             _context = context;
         }
 
-        public async Task<BookmarkResponseDto> CreateBookmark(int userId, string userName, CreateBookmarkDto request)
-        {
-            var video = await _context.Videos.FindAsync(request.VideoId);
-            if (video == null)
-            {
-                throw new Exception("Video not found");
-            }
+    public async Task<BookmarkResponseDto> CreateBookmark(int videoId, int userId, CreateBookmarkDto request)
+{
+    if (request.VideoId != videoId)
+    {
+        throw new Exception("Video ID mismatch");
+    }
 
-            var bookmark = new Bookmark
-            {
-                VideoId = request.VideoId,
-                UserId = userId,
-                Timestamp = request.Timestamp,
-                Title = request.Title,
-                CreatedAt = DateTime.UtcNow
-            };
+    var video = await _context.Videos.FindAsync(videoId);
+    if (video == null)
+    {
+        throw new Exception("Video not found");
+    }
 
-            _context.Bookmarks.Add(bookmark);
-            await _context.SaveChangesAsync();
+    var bookmark = new Bookmark
+    {
+        VideoId = videoId,
+        UserId = userId,
+        Timestamp = request.Timestamp,
+        Title = request.Title,
+        CreatedAt = DateTime.UtcNow
+    };
 
-            var minutes = request.Timestamp / 60;
-            var seconds = request.Timestamp % 60;
-            var formattedTime = $"{minutes}:{seconds:D2}";
+    _context.Bookmarks.Add(bookmark);
+    await _context.SaveChangesAsync();
 
-            return new BookmarkResponseDto
-            {
-                Id = bookmark.Id,
-                VideoId = bookmark.VideoId,
-                UserName = userName,
-                Timestamp = bookmark.Timestamp,
-                Title = bookmark.Title,
-                FormattedTime = formattedTime,
-                CreatedAt = bookmark.CreatedAt
-            };
-        }
+    var minutes = request.Timestamp / 60;
+    var seconds = request.Timestamp % 60;
+    var formattedTime = $"{minutes}:{seconds:D2}";
 
+    var user = await _context.Users.FindAsync(userId);
+    var userName = user?.FullName ?? "Unknown";
+
+    return new BookmarkResponseDto
+    {
+        Id = bookmark.Id,
+        VideoId = bookmark.VideoId,
+        UserName = userName,
+        Timestamp = bookmark.Timestamp,
+        Title = bookmark.Title,
+        FormattedTime = formattedTime,
+        CreatedAt = bookmark.CreatedAt
+    };
+}
         public async Task<List<BookmarkResponseDto>> GetVideoBookmarks(int videoId)
         {
             var bookmarks = await _context.Bookmarks

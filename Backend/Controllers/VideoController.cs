@@ -2,11 +2,12 @@ using Backend.DTOs.Video;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http.Features;
 using System.Security.Claims;
 
 namespace Backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/videos")]
     [ApiController]
     [Authorize]
     public class VideoController : ControllerBase
@@ -30,10 +31,17 @@ namespace Backend.Controllers
         }
 
         [HttpPost("upload")]
+        [RequestSizeLimit(104857600)] 
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         public async Task<IActionResult> Upload([FromForm] CreateVideoDto request)
         {
             try
             {
+                if (request.VideoFile == null || request.VideoFile.Length == 0)
+                {
+                    return BadRequest(new { success = false, message = "Video file is required" });
+                }
+
                 var userId = GetUserId();
                 var result = await _videoService.UploadVideo(userId, request);
                 return Ok(new { success = true, message = "Video uploaded successfully", data = result });
@@ -79,6 +87,9 @@ namespace Backend.Controllers
             try
             {
                 var video = await _videoService.GetVideoById(id);
+                if (video == null)
+                    return NotFound(new { success = false, message = "Video not found" });
+                    
                 return Ok(new { success = true, data = video });
             }
             catch (Exception ex)

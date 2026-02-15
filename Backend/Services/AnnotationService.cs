@@ -14,9 +14,9 @@ namespace Backend.Services
             _context = context;
         }
 
-        public async Task<AnnotationResponseDto> CreateAnnotation(int userId, string userName, CreateAnnotationDto request)
+       public async Task<AnnotationResponseDto> CreateAnnotation(int videoId, int userId, CreateAnnotationDto request)
         {
-            var video = await _context.Videos.FindAsync(request.VideoId);
+            var video = await _context.Videos.FindAsync(videoId);
             if (video == null)
             {
                 throw new Exception("Video not found");
@@ -24,7 +24,7 @@ namespace Backend.Services
 
             var annotation = new Annotation
             {
-                VideoId = request.VideoId,
+                VideoId = videoId,  
                 UserId = userId,
                 Timestamp = request.Timestamp,
                 Description = request.Description,
@@ -37,6 +37,9 @@ namespace Backend.Services
             var minutes = request.Timestamp / 60;
             var seconds = request.Timestamp % 60;
             var formattedTime = $"{minutes}:{seconds:D2}";
+
+            var user = await _context.Users.FindAsync(userId);
+            var userName = user?.FullName ?? "Unknown";
 
             return new AnnotationResponseDto
             {

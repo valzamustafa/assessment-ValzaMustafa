@@ -1,3 +1,5 @@
+using System;
+
 namespace Backend.DTOs.Bookmark
 {
     public class BookmarkResponseDto

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { motion } from 'framer-motion';
 import { UserIcon, EnvelopeIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -49,16 +48,14 @@ const RegisterPage = () => {
 
     try {
       const response = await register({ name, email, password });
-      console.log('Register response:', response);
       
       if (response && response.accessToken) {
         toast.success('Registration successful! 🎉');
-        
         navigate('/dashboard');
       } else if (response && response.success === false) {
         toast.error(response.error || 'Registration failed');
       } else {
-        toast.error('Registration successful! Please login.');
+        toast.success('Registration successful! Please login.');
         navigate('/login');
       }
     } catch (error) {
@@ -73,31 +70,16 @@ const RegisterPage = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="min-h-[80vh] flex items-center justify-center"
-    >
+    <div className="min-h-[80vh] flex items-center justify-center">
       <div className="w-full max-w-md">
-        <motion.div 
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
             VideoAnnotation
           </h1>
           <p className="text-gray-500 mt-2">Create your account</p>
-        </motion.div>
+        </div>
 
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8"
-        >
+        <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Full Name"
@@ -169,18 +151,13 @@ const RegisterPage = () => {
               Sign in instead
             </Button>
           </Link>
-        </motion.div>
+        </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-center text-xs text-gray-400 mt-8"
-        >
+        <p className="text-center text-xs text-gray-400 mt-8">
           © 2024 VideoAnnotation. All rights reserved.
-        </motion.p>
+        </p>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

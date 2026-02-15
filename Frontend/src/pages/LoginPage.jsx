@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { motion } from 'framer-motion';
 import { EnvelopeIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -20,14 +19,20 @@ const LoginPage = () => {
 
     try {
       const response = await login({ email, password });
-      console.log('Login response:', response);
+      
+      console.log('Login response full:', response);
       
       if (response && response.accessToken) {
         toast.success('Login successful! 🎉');
+      
+        const userRole = response.role;
+        console.log('User role:', userRole);
         
-        if (response.role === 'admin') {
+        if (userRole === 'Admin') {  
+          console.log('Redirecting to admin page');
           navigate('/admin');
         } else {
+          console.log('Redirecting to dashboard');
           navigate('/dashboard');
         }
       } else {
@@ -46,36 +51,21 @@ const LoginPage = () => {
   };
 
   const fillTestCredentials = () => {
-    setEmail('valzam@gmail.com');
-    setPassword('password123');
+    setEmail('admin@gmail.com');
+    setPassword('admin123');
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="min-h-[80vh] flex items-center justify-center"
-    >
+    <div className="min-h-[80vh] flex items-center justify-center">
       <div className="w-full max-w-md">
-        <motion.div 
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
             VideoAnnotation
           </h1>
           <p className="text-gray-500 mt-2">Welcome back! Sign in to your account</p>
-        </motion.div>
+        </div>
 
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8"
-        >
+        <div className="bg-white rounded-2xl shadow-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
               label="Email Address"
@@ -133,18 +123,13 @@ const LoginPage = () => {
               Create new account
             </Button>
           </Link>
-        </motion.div>
+        </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-center text-xs text-gray-400 mt-8"
-        >
+        <p className="text-center text-xs text-gray-400 mt-8">
           © 2024 VideoAnnotation. All rights reserved.
-        </motion.p>
+        </p>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

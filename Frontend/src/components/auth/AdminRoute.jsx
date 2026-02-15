@@ -2,20 +2,23 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const AdminRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+  console.log('AdminRoute - user:', user);
+  console.log('AdminRoute - isAuthenticated:', isAuthenticated);
+  console.log('AdminRoute - user role:', user?.role);
+
+  if (!isAuthenticated) {
+    console.log('AdminRoute - not authenticated, redirect to login');
+    return <Navigate to="/login" />;
   }
 
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+  if (user?.role !== 'Admin') {
+    console.log('AdminRoute - not admin, redirect to dashboard');
+    return <Navigate to="/dashboard" />;
   }
 
+  console.log('AdminRoute - is admin, showing admin page');
   return children;
 };
 

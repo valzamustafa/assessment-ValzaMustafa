@@ -33,6 +33,20 @@ async register(userData) {
       throw error;
     }
   },
+async getAllUsers() {
+  try {
+    const response = await api.get('/users');
+    console.log('getAllUsers response:', response.data);
+    
+    if (response.data?.success && response.data?.data) {
+      return response.data.data;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error in getAllUsers:', error);
+    return [];
+  }
+},
   async refreshToken() {
     try {
       const refreshToken = this.getRefreshToken();
