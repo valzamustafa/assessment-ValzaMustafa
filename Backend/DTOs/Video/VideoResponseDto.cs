@@ -15,5 +15,7 @@ namespace Backend.DTOs.Video
         public DateTime UploadedAt { get; set; }
         public int AnnotationCount { get; set; }
         public int BookmarkCount { get; set; }
+        public long? FileSize { get; set; }
+        public string? ContentType { get; set; }
     }
 }

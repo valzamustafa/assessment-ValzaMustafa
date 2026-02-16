@@ -12,8 +12,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 104857600;
+    options.AllowSynchronousIO = true;
+});
 
+builder.Services.Configure<FormOptions>(x =>
+{
+    x.ValueLengthLimit = int.MaxValue;
+    x.MultipartBodyLengthLimit = int.MaxValue;
+    x.MemoryBufferThreshold = int.MaxValue;
+});
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueLengthLimit = int.MaxValue;
@@ -21,10 +32,9 @@ builder.Services.Configure<FormOptions>(options =>
     options.MemoryBufferThreshold = 104857600;
 });
 
-
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 104857600;
+    options.Limits.MaxRequestBodySize = 104857600; 
     options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
     options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10);
 });
@@ -85,7 +95,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -93,8 +102,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "http://localhost:3000",
             "http://localhost:3001",
-            "http://localhost:5173",
-            "http://localhost:5000"
+            "http://localhost:5173"
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
@@ -119,26 +127,25 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseStaticFiles(); 
-
+app.UseStaticFiles();
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-if (Directory.Exists(uploadsPath))
+if (!Directory.Exists(uploadsPath))
 {
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(uploadsPath),
-        RequestPath = "/Uploads"
-    });
+    Directory.CreateDirectory(uploadsPath);
 }
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/Uploads"
+});
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-var videosPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", "Videos");
+var videosPath = Path.Combine(uploadsPath, "Videos");
 if (!Directory.Exists(videosPath))
     Directory.CreateDirectory(videosPath);
 

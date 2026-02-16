@@ -9,15 +9,26 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (authService.isAuthenticated()) {
+        console.log('=== INIT AUTH ===');
+        console.log('Checking authentication...');
+        
+        const isAuth = authService.isAuthenticated();
+        console.log('isAuthenticated from service:', isAuth);
+        
+        if (isAuth) {
           const userData = authService.getUser();
           console.log('AuthProvider - loaded user:', userData);
           setUser(userData);
+        } else {
+          console.log('AuthProvider - not authenticated');
+          setUser(null);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         authService.logout();
+        setUser(null);
       } finally {
+        console.log('AuthProvider - setting loading to false');
         setLoading(false);
       }
     };
@@ -52,6 +63,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('AuthProvider - logout called');
     authService.logout();
     setUser(null);
   };

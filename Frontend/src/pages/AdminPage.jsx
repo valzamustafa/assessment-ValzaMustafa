@@ -34,14 +34,22 @@ const AdminPage = () => {
         console.log('All videos:', allVideos);
         setVideos(allVideos);
         
+        let allUsers = [];
         try {
-          const allUsers = await authService.getAllUsers();
+          allUsers = await authService.getAllUsers();
           console.log('All users:', allUsers);
-          setUsers(allUsers);
         } catch (error) {
           console.error('Error loading users:', error);
+          allUsers = [{
+            id: user?.id || 1,
+            fullName: user?.name || 'Admin User',
+            email: user?.email || 'admin@example.com',
+            role: 'Admin',
+            createdAt: new Date().toISOString(),
+            videos: []
+          }];
         }
-        
+        setUsers(allUsers);
         const totalAnnotations = allVideos.reduce((sum, video) => sum + (video.annotationCount || 0), 0);
         const totalBookmarks = allVideos.reduce((sum, video) => sum + (video.bookmarkCount || 0), 0);
         
@@ -49,7 +57,7 @@ const AdminPage = () => {
           totalVideos: allVideos.length,
           totalAnnotations,
           totalBookmarks,
-          totalUsers: users.length
+          totalUsers: allUsers.length
         });
         
       } catch (error) {
@@ -60,7 +68,7 @@ const AdminPage = () => {
       }
     };
     loadAdminData();
-  }, []);
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -76,57 +84,75 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center space-x-4">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600 mt-1">Manage all content</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => navigate('/dashboard')} 
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+               
+              </button>
+              <div>
+                <h1 className="text-4xl font-bold">Admin Dashboard</h1>
+                <p className="text-primary-100 mt-2">Manage all content across the platform</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-6">
+              <div className="text-right">
+                <p className="text-sm text-primary-100">Welcome back,</p>
+                <p className="font-semibold text-lg">{user?.name || 'Admin User'}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="!bg-white/10 !text-white !border-white/20 hover:!bg-white/20"
+              >
+                Logout
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Welcome,</p>
-            <p className="font-medium text-gray-900">{user?.name || 'Admin User'}</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Logout
-          </Button>
         </div>
       </div>
 
-      <AdminStats stats={stats} />
+      <div className="max-w-7xl mx-auto px-4 -mt-8">
+        <AdminStats stats={stats} />
 
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="flex space-x-8">
-          <button 
-            onClick={() => setActiveTab('videos')} 
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'videos' 
-                ? 'border-primary-600 text-primary-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            All Videos ({videos.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('users')} 
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'users' 
-                ? 'border-primary-600 text-primary-600' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Users ({users.length})
-          </button>
-        </nav>
+        <div className="bg-white rounded-xl shadow-md mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+              <button 
+                onClick={() => setActiveTab('videos')} 
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'videos' 
+                    ? 'border-primary-600 text-primary-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                All Videos ({videos.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('users')} 
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'users' 
+                    ? 'border-primary-600 text-primary-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Users ({users.length})
+              </button>
+            </nav>
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'videos' && <AdminVideosList videos={videos} />}
+            {activeTab === 'users' && <AdminUsersList users={users} />}
+          </div>
+        </div>
       </div>
-
-      {activeTab === 'videos' && <AdminVideosList videos={videos} />}
-      {activeTab === 'users' && <AdminUsersList users={users} />}
     </div>
   );
 };

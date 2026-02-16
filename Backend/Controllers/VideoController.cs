@@ -31,23 +31,38 @@ namespace Backend.Controllers
         }
 
         [HttpPost("upload")]
-        [RequestSizeLimit(104857600)] 
+        [RequestSizeLimit(104857600)]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         public async Task<IActionResult> Upload([FromForm] CreateVideoDto request)
         {
             try
             {
+                Console.WriteLine("=== UPLOAD REQUEST ===");
+                Console.WriteLine($"Title: {request.Title}");
+                Console.WriteLine($"Description: {request.Description}");
+                Console.WriteLine($"Has Video File: {request.VideoFile != null}");
+                
                 if (request.VideoFile == null || request.VideoFile.Length == 0)
                 {
                     return BadRequest(new { success = false, message = "Video file is required" });
                 }
 
+                Console.WriteLine($"File Name: {request.VideoFile.FileName}");
+                Console.WriteLine($"File Size: {request.VideoFile.Length} bytes");
+                Console.WriteLine($"Content Type: {request.VideoFile.ContentType}");
+
                 var userId = GetUserId();
+                Console.WriteLine($"User ID: {userId}");
+                
                 var result = await _videoService.UploadVideo(userId, request);
+                Console.WriteLine($"Video saved with ID: {result.Id}");
+                
                 return Ok(new { success = true, message = "Video uploaded successfully", data = result });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Upload error: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }

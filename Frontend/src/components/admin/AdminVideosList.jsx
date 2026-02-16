@@ -1,51 +1,108 @@
 import { Link } from 'react-router-dom';
-import { VideoCameraIcon, ChatBubbleLeftIcon, BookmarkIcon, CalendarIcon, UserIcon } from '@heroicons/react/24/outline';
+import { 
+  VideoCameraIcon, 
+  ChatBubbleLeftIcon, 
+  BookmarkIcon, 
+  CalendarIcon, 
+  UserIcon,
+  ClockIcon 
+} from '@heroicons/react/24/outline';
 
 const AdminVideosList = ({ videos }) => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    const mb = bytes / 1024 / 1024;
+    return mb.toFixed(1) + ' MB';
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">All Videos</h2>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-900">All Videos</h2>
+        <Link to="/upload">
+          <button className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors text-sm">
+            <VideoCameraIcon className="h-4 w-4" />
+            <span>Upload New</span>
+          </button>
+        </Link>
+      </div>
       
       {videos.length === 0 ? (
-        <div className="text-center py-12">
-          <VideoCameraIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No videos uploaded yet</p>
+        <div className="text-center py-16 bg-gray-50 rounded-xl">
+          <VideoCameraIcon className="h-20 w-20 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No videos uploaded yet</h3>
+          <p className="text-gray-500 mb-6">Videos from all users will appear here</p>
+          <Link to="/upload">
+            <button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl transition-colors">
+              Upload First Video
+            </button>
+          </Link>
         </div>
       ) : (
         <div className="space-y-4">
           {videos.map((video) => (
             <Link to={`/video/${video.id}`} key={video.id}>
-              <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow hover:border-primary-200">
+              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1 hover:border-primary-200">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-lg">{video.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">{video.description || 'No description'}</p>
-                    <div className="flex items-center space-x-4 mt-3 text-xs text-gray-400">
-                      <span className="flex items-center">
-                        <UserIcon className="h-3 w-3 mr-1" />
-                        User ID: {video.userId}
-                      </span>
-                      <span className="flex items-center">
-                        <CalendarIcon className="h-3 w-3 mr-1" />
-                        {formatDate(video.uploadedAt)}
-                      </span>
+                    <div className="flex items-start space-x-4">
+                      <div className="w-24 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <VideoCameraIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg">{video.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                          {video.description || 'No description provided'}
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-4 mt-3 text-xs">
+                          <span className="flex items-center text-gray-500">
+                            <UserIcon className="h-3 w-3 mr-1" />
+                            User #{video.userId}
+                          </span>
+                          <span className="flex items-center text-gray-500">
+                            <CalendarIcon className="h-3 w-3 mr-1" />
+                            {formatDate(video.uploadedAt)}
+                          </span>
+                          {video.fileSize && (
+                            <span className="text-gray-400">
+                              {formatFileSize(video.fileSize)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4 mt-3 md:mt-0">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <ChatBubbleLeftIcon className="h-4 w-4 mr-1 text-green-500" />
-                      <span>{video.annotationCount || 0}</span>
+                  
+                  <div className="flex items-center space-x-6 mt-4 md:mt-0 ml-20 md:ml-0">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center text-sm text-gray-600 bg-green-50 px-3 py-1.5 rounded-lg">
+                        <ChatBubbleLeftIcon className="h-4 w-4 mr-1.5 text-green-500" />
+                        <span className="font-medium">{video.annotationCount || 0}</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 bg-purple-50 px-3 py-1.5 rounded-lg">
+                        <BookmarkIcon className="h-4 w-4 mr-1.5 text-purple-500" />
+                        <span className="font-medium">{video.bookmarkCount || 0}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <BookmarkIcon className="h-4 w-4 mr-1 text-purple-500" />
-                      <span>{video.bookmarkCount || 0}</span>
+                    
+                    <div className="text-gray-400">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                    <span className="text-xs text-gray-400 ml-4">{video.fileSize ? (video.fileSize / 1024 / 1024).toFixed(1) + ' MB' : ''}</span>
                   </div>
                 </div>
               </div>

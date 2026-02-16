@@ -1,22 +1,22 @@
 import api from './api';
 
 export const authService = {
-async register(userData) {
-  try {
-    const response = await api.post('/auth/register', userData);
-    console.log('Register API response:', response.data);
-    
-    if (response.data.accessToken) {
-      this.setTokens(response.data);
-      this.setUser(response.data);
+  async register(userData) {
+    try {
+      const response = await api.post('/auth/register', userData);
+      console.log('Register API response:', response.data);
+      
+      if (response.data.accessToken) {
+        this.setTokens(response.data);
+        this.setUser(response.data);
+        return response.data;
+      }
       return response.data;
+    } catch (error) {
+      console.error('Register error details:', error.response?.data || error);
+      throw error;
     }
-    return response.data;
-  } catch (error) {
-    console.error('Register error details:', error.response?.data || error);
-    throw error;
-  }
-},
+  },
 
   async login(credentials) {
     try {
@@ -33,30 +33,35 @@ async register(userData) {
       throw error;
     }
   },
-async getAllUsers() {
-  try {
-    const response = await api.get('/users');
-    console.log('getAllUsers response:', response.data);
-    
-    if (response.data?.success && response.data?.data) {
-      return response.data.data;
+
+  async getAllUsers() {
+    try {
+      const response = await api.get('/users');
+      console.log('getAllUsers response:', response.data);
+      
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error in getAllUsers:', error);
+      return [];
     }
-    return [];
-  } catch (error) {
-    console.error('Error in getAllUsers:', error);
-    return [];
-  }
-},
+  },
+
   async refreshToken() {
     try {
       const refreshToken = this.getRefreshToken();
       if (!refreshToken) {
-        throw new Error('No refresh token');
+        console.log('No refresh token available');
+        return false;
       }
 
+      console.log('Attempting to refresh token...');
       const response = await api.post('/auth/refresh', { refreshToken });
       
       if (response.data.accessToken) {
+        console.log('Token refreshed successfully');
         this.setTokens(response.data);
         this.setUser(response.data);
         return true;
@@ -74,8 +79,16 @@ async getAllUsers() {
     if (data.refreshToken) {
       localStorage.setItem('refresh_token', data.refreshToken);
     }
-    const expiryTime = Date.now() + (data.expiresIn || 15 * 60 * 1000);
+    const expiresInSeconds = data.expiresIn || 900; 
+    const expiryTime = Date.now() + (expiresInSeconds * 1000);
+    
     localStorage.setItem('token_expiry', expiryTime.toString());
+    
+    console.log('Tokens saved:', {
+      expiresInSeconds,
+      expiryTime: new Date(expiryTime).toLocaleTimeString(),
+      now: new Date().toLocaleTimeString()
+    });
   },
 
   setUser(data) {
@@ -86,6 +99,7 @@ async getAllUsers() {
       role: data.role
     };
     localStorage.setItem('user', JSON.stringify(user));
+    console.log('User saved:', user);
   },
 
   getToken() {
@@ -97,17 +111,39 @@ async getAllUsers() {
   },
 
   getUser() {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    try {
+      const user = localStorage.getItem('user');
+      if (!user) return null;
+      return JSON.parse(user);
+    } catch (error) {
+      console.error('Error parsing user:', error);
+      return null;
+    }
   },
 
   isTokenExpired() {
     const expiry = localStorage.getItem('token_expiry');
-    if (!expiry) return true;
-    return Date.now() > parseInt(expiry);
+    if (!expiry) {
+      console.log('No expiry found, token considered expired');
+      return true;
+    }
+    
+    const expiryTime = parseInt(expiry);
+    const now = Date.now();
+    const isExpired = now > expiryTime;
+    
+    console.log('Token expiry check:', {
+      expiryTime: new Date(expiryTime).toLocaleTimeString(),
+      now: new Date(now).toLocaleTimeString(),
+      timeLeft: Math.round((expiryTime - now) / 1000) + ' seconds',
+      isExpired
+    });
+    
+    return isExpired;
   },
 
   logout() {
+    console.log('Logging out - clearing localStorage');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
@@ -116,6 +152,23 @@ async getAllUsers() {
 
   isAuthenticated() {
     const token = this.getToken();
-    return !!token && !this.isTokenExpired();
+    const user = this.getUser();
+    const tokenValid = !!token && !this.isTokenExpired();
+    const userValid = !!user;
+    
+    console.log('isAuthenticated check:', { 
+      hasToken: !!token, 
+      hasUser: !!user,
+      tokenValid,
+      userValid,
+      isAuthenticated: tokenValid && userValid 
+    });
+    if (tokenValid && !userValid) {
+      console.log('Token exists but user missing - clearing token');
+      this.logout();
+      return false;
+    }
+    
+    return tokenValid && userValid;
   }
 };

@@ -4,7 +4,7 @@ namespace Backend.Services
 {
     public interface IVideoService
     {
-        Task<VideoResponseDto> UploadVideo(int userId, CreateVideoDto request);
+        Task<VideoResponseDto> UploadVideo(int userId, CreateVideoDto createVideoDto);
         Task<IEnumerable<VideoResponseDto>> GetAllVideos();
         Task<IEnumerable<VideoResponseDto>> GetUserVideos(int userId);
         Task<VideoResponseDto?> GetVideoById(int id);
