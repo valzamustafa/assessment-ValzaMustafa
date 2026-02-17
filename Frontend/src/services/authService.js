@@ -49,6 +49,22 @@ export const authService = {
     }
   },
 
+  async deleteUser(userId) {
+    try {
+      console.log(`Deleting user with ID: ${userId}`);
+      const response = await api.delete(`/users/${userId}`);
+      console.log('Delete user response:', response.data);
+      
+      if (response.data?.success) {
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Failed to delete user');
+    } catch (error) {
+      console.error('Error in deleteUser:', error);
+      throw error;
+    }
+  },
+
   async refreshToken() {
     try {
       const refreshToken = this.getRefreshToken();
@@ -163,6 +179,7 @@ export const authService = {
       userValid,
       isAuthenticated: tokenValid && userValid 
     });
+    
     if (tokenValid && !userValid) {
       console.log('Token exists but user missing - clearing token');
       this.logout();

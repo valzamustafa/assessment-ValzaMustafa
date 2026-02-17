@@ -24,51 +24,74 @@ const AdminPage = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadAdminData = async () => {
+  const loadAdminData = async () => {
+    try {
+      setLoading(true);
+      console.log('Loading admin data...');
+      
+      const allVideos = await videoService.getAllVideos();
+      console.log('All videos:', allVideos);
+      setVideos(allVideos);
+      
+      let allUsers = [];
       try {
-        setLoading(true);
-        console.log('Loading admin data...');
-        
-        const allVideos = await videoService.getAllVideos();
-        console.log('All videos:', allVideos);
-        setVideos(allVideos);
-        
-        let allUsers = [];
-        try {
-          allUsers = await authService.getAllUsers();
-          console.log('All users:', allUsers);
-        } catch (error) {
-          console.error('Error loading users:', error);
-          allUsers = [{
-            id: user?.id || 1,
-            fullName: user?.name || 'Admin User',
-            email: user?.email || 'admin@example.com',
-            role: 'Admin',
-            createdAt: new Date().toISOString(),
-            videos: []
-          }];
-        }
-        setUsers(allUsers);
-        const totalAnnotations = allVideos.reduce((sum, video) => sum + (video.annotationCount || 0), 0);
-        const totalBookmarks = allVideos.reduce((sum, video) => sum + (video.bookmarkCount || 0), 0);
-        
-        setStats({
-          totalVideos: allVideos.length,
-          totalAnnotations,
-          totalBookmarks,
-          totalUsers: allUsers.length
-        });
-        
+        allUsers = await authService.getAllUsers();
+        console.log('All users:', allUsers);
       } catch (error) {
-        console.error('Error loading admin data:', error);
-        toast.error('Failed to load admin data');
-      } finally {
-        setLoading(false);
+        console.error('Error loading users:', error);
+        allUsers = [{
+          id: user?.id || 1,
+          fullName: user?.name || 'Admin User',
+          email: user?.email || 'admin@gmail.com',
+          role: 'Admin',
+          createdAt: new Date().toISOString(),
+          videos: []
+        }];
       }
-    };
+      setUsers(allUsers);
+      
+      const totalAnnotations = allVideos.reduce((sum, video) => sum + (video.annotationCount || 0), 0);
+      const totalBookmarks = allVideos.reduce((sum, video) => sum + (video.bookmarkCount || 0), 0);
+      
+      setStats({
+        totalVideos: allVideos.length,
+        totalAnnotations,
+        totalBookmarks,
+        totalUsers: allUsers.length
+      });
+      
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      toast.error('Failed to load admin data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadAdminData();
   }, [user]);
+  const handleVideoDeleted = (deletedVideoId) => {
+    const updatedVideos = videos.filter(v => v.id !== deletedVideoId);
+    setVideos(updatedVideos);
+    const totalAnnotations = updatedVideos.reduce((sum, video) => sum + (video.annotationCount || 0), 0);
+    const totalBookmarks = updatedVideos.reduce((sum, video) => sum + (video.bookmarkCount || 0), 0);
+    
+    setStats({
+      totalVideos: updatedVideos.length,
+      totalAnnotations,
+      totalBookmarks,
+      totalUsers: users.length
+    });
+  };
+  const handleUserDeleted = (deletedUserId) => {
+    const updatedUsers = users.filter(u => u.id !== deletedUserId);
+    setUsers(updatedUsers);
+    setStats(prev => ({
+      ...prev,
+      totalUsers: updatedUsers.length
+    }));
+  };
 
   const handleLogout = () => {
     logout();
@@ -93,7 +116,7 @@ const AdminPage = () => {
                 onClick={() => navigate('/dashboard')} 
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
-               
+                <ArrowLeftIcon className="h-6 w-6" />
               </button>
               <div>
                 <h1 className="text-4xl font-bold">Admin Dashboard</h1>
@@ -148,8 +171,18 @@ const AdminPage = () => {
           </div>
 
           <div className="p-6">
-            {activeTab === 'videos' && <AdminVideosList videos={videos} />}
-            {activeTab === 'users' && <AdminUsersList users={users} />}
+            {activeTab === 'videos' && (
+              <AdminVideosList 
+                videos={videos} 
+                onVideoDeleted={handleVideoDeleted}
+              />
+            )}
+            {activeTab === 'users' && (
+              <AdminUsersList 
+                users={users} 
+                onUserDeleted={handleUserDeleted}
+              />
+            )}
           </div>
         </div>
       </div>

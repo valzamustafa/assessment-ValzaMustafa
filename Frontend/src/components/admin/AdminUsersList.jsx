@@ -1,6 +1,11 @@
-import { UserIcon, CalendarIcon, VideoCameraIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
+import { UserIcon, CalendarIcon, VideoCameraIcon, EnvelopeIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { authService } from '../../services/authService';
+import toast from 'react-hot-toast';
 
-const AdminUsersList = ({ users }) => {
+const AdminUsersList = ({ users, onUserDeleted }) => {
+  const [deletingId, setDeletingId] = useState(null);
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -10,6 +15,33 @@ const AdminUsersList = ({ users }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDeleteUser = async (e, userId, userName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"? This will also delete all their videos!`)) {
+      return;
+    }
+    
+    setDeletingId(userId);
+    
+    try {
+      await authService.deleteUser(userId);
+      
+      toast.success('User deleted successfully!');
+      
+      if (onUserDeleted) {
+        onUserDeleted(userId);
+      }
+      
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -27,7 +59,7 @@ const AdminUsersList = ({ users }) => {
           {users.map((user) => (
             <div 
               key={user.id} 
-              className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1"
+              className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all hover:-translate-y-1 relative group"
             >
               <div className="flex items-start space-x-4">
                 <div className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -67,6 +99,21 @@ const AdminUsersList = ({ users }) => {
                   </div>
                 </div>
               </div>
+              
+              {user.role !== 'Admin' && (
+                <button
+                  onClick={(e) => handleDeleteUser(e, user.id, user.fullName)}
+                  disabled={deletingId === user.id}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Delete user"
+                >
+                  {deletingId === user.id ? (
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <TrashIcon className="h-5 w-5" />
+                  )}
+                </button>
+              )}
             </div>
           ))}
         </div>
